@@ -1,0 +1,209 @@
+import React, { useState, useEffect } from 'react';
+
+// --- נתונים וקבועים ---
+
+// הגדרת הקטגוריות והצבעים שלהן לפי הדרישות
+const CATEGORIES = {
+  "אני והכיתה": { name: "אני והכיתה", borderColor: "border-pink-500", bgColor: "bg-pink-50", textColor: "text-pink-700" },
+  "המעבדה הפדגוגית": { name: "המעבדה הפדגוגית", borderColor: "border-blue-500", bgColor: "bg-blue-50", textColor: "text-blue-700" },
+  "מעגלי השותפות": { name: "מעגלי השותפות", borderColor: "border-yellow-400", bgColor: "bg-yellow-50", textColor: "text-yellow-700" },
+  "המראה והמצפן": { name: "המראה והמצפן", borderColor: "border-purple-500", bgColor: "bg-purple-50", textColor: "text-purple-700" }
+};
+
+// יצירת מצב התחלתי של החפיסה (24 קלפים, 6 בכל קטגוריה)
+const generateInitialDeck = () => {
+  const deck = [];
+  Object.keys(CATEGORIES).forEach(categoryName => {
+    for (let i = 1; i <= 6; i++) {
+      deck.push({
+        uniqueId: `${categoryName}-${i}`, // מזהה ייחודי לקלף
+        category: categoryName,
+        contentId: `placeholder${i}` // מזהה התוכן כפי שנתבקש
+      });
+    }
+  });
+  return deck;
+};
+
+export default function App() {
+  // --- ניהול מצב (State) ---
+  const [availableCards, setAvailableCards] = useState(generateInitialDeck());
+  const [currentCard, setCurrentCard] = useState(null);
+  const [isAnimating, setIsAnimating] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState(null); // הוספת מצב לקטגוריה נבחרת
+
+  // --- פונקציות מרכזיות ---
+
+  // פונקציה להגרלת קלף
+  const drawCard = () => {
+    if (!selectedCategory || availableCards.length === 0) return;
+
+    // הפעלת אנימציית העלמה קלה
+    setIsAnimating(true);
+
+    setTimeout(() => {
+      // 1. סינון כל הקלפים ששייכים לקטגוריה שנבחרה
+      const cardsInCategory = availableCards.filter(c => c.category === selectedCategory);
+      
+      if (cardsInCategory.length === 0) {
+        setIsAnimating(false);
+        return;
+      }
+      
+      // 2. בחירת קלף אקראי מתוך הקטגוריה
+      const randomCard = cardsInCategory[Math.floor(Math.random() * cardsInCategory.length)];
+
+      // 3. עדכון המצב: הצגת הקלף והסרתו מהחפיסה הזמינה
+      setCurrentCard(randomCard);
+      setAvailableCards(prev => prev.filter(c => c.uniqueId !== randomCard.uniqueId));
+      setSelectedCategory(null); // איפוס הבחירה לאחר ההגרלה, כדי שיבחרו שוב
+      
+      // סיום האנימציה להצגת הקלף החדש
+      setIsAnimating(false);
+    }, 300); // השהייה קלה לאפקט ויזואלי
+  };
+
+  // פונקציה לאיפוס המשחק
+  const resetDeck = () => {
+    setAvailableCards(generateInitialDeck());
+    setCurrentCard(null);
+    setSelectedCategory(null); // איפוס גם של הקטגוריה הנבחרת
+  };
+
+  // --- חישובי תצוגה ---
+  
+  // חישוב כמות הקלפים שנותרו לכל קטגוריה
+  const cardsLeftPerCategory = Object.keys(CATEGORIES).reduce((acc, cat) => {
+    acc[cat] = availableCards.filter(c => c.category === cat).length;
+    return acc;
+  }, {});
+
+  const totalCardsLeft = availableCards.length;
+
+  return (
+    <div dir="rtl" className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-purple-100 font-assistant text-slate-800 p-4 sm:p-8 flex flex-col items-center">
+      <style>
+        {`
+          @import url('https://fonts.googleapis.com/css2?family=Assistant:wght@300;400;500;600;700&display=swap');
+          .font-assistant {
+            font-family: 'Assistant', sans-serif;
+          }
+        `}
+      </style>
+
+      {/* אזור כותרת ולוגו */}
+      <header className="w-full max-w-2xl flex flex-col items-center mb-8 space-y-4">
+        {/* הלוגו המעודכן והמוגדל */}
+        <img 
+          src="תלפיות_לוגו_ח-removebg-preview.png" 
+          alt="לוגו מכללת תלפיות" 
+          className="w-64 sm:w-80 h-auto object-contain drop-shadow-sm mb-2"
+        />
+        <h1 className="text-4xl sm:text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-l from-purple-700 to-pink-600 drop-shadow-sm text-center">
+          השנה שלי
+        </h1>
+      </header>
+
+      {/* תצוגת סטטוס חפיסה ובחירת קטגוריה */}
+      <section className="w-full max-w-2xl bg-white/60 backdrop-blur-sm rounded-xl p-4 shadow-sm mb-8 border border-white/50">
+        <h2 className="text-lg font-semibold text-center mb-1 text-gray-700">מצב החפיסה: נותרו {totalCardsLeft} קלפים</h2>
+        <p className="text-sm text-center text-purple-600 mb-4 font-medium">יש ללחוץ על קטגוריה כדי לבחור אותה להגרלה</p>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm text-center">
+          {Object.entries(CATEGORIES).map(([catName, styling]) => {
+            const isSelected = selectedCategory === catName;
+            const isEmpty = cardsLeftPerCategory[catName] === 0;
+            
+            return (
+              <div 
+                key={catName} 
+                onClick={() => !isEmpty && setSelectedCategory(catName)}
+                className={`p-2 rounded-lg border-2 transition-all cursor-pointer select-none flex flex-col items-center justify-center
+                  ${isEmpty ? 'opacity-50 grayscale cursor-not-allowed' : 'hover:scale-105 hover:shadow-md'}
+                  ${isSelected ? `${styling.borderColor} shadow-md scale-105 bg-white ring-2 ring-offset-2 ring-purple-300` : `border-transparent border-b-2 ${styling.bgColor}`}
+                  ${styling.textColor} font-medium
+                `}
+              >
+                <div>{catName}</div>
+                <div className="text-xl font-bold mt-1">{cardsLeftPerCategory[catName]}</div>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
+      {/* אזור מרכזי - הצגת הקלף */}
+      <main className="w-full max-w-md flex-grow flex flex-col items-center justify-center min-h-[300px] mb-8 relative">
+        {totalCardsLeft === 0 && !currentCard ? (
+          <div className="text-center p-8 bg-white rounded-2xl shadow-lg border-2 border-purple-200">
+            <h3 className="text-2xl font-bold text-purple-700 mb-2">החפיסה ריקה!</h3>
+            <p className="text-gray-600">עברתם על כל 24 הקלפים.</p>
+          </div>
+        ) : (
+          <div 
+            className={`w-full aspect-[3/4] sm:aspect-[4/5] bg-white rounded-3xl shadow-xl transition-all duration-300 transform flex flex-col overflow-hidden relative
+              ${isAnimating ? 'scale-95 opacity-0' : 'scale-100 opacity-100'}
+              ${currentCard ? `border-8 ${CATEGORIES[currentCard.category].borderColor}` : 'border-4 border-dashed border-gray-300 items-center justify-center'}
+            `}
+          >
+            {!currentCard ? (
+              <div className="text-gray-400 text-xl font-medium flex flex-col items-center text-center p-4">
+                <svg className="w-16 h-16 mb-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
+                <span>בחרו קטגוריה ולחצו &quot;הגרל קלף&quot;</span>
+              </div>
+            ) : (
+              <>
+                {/* ראש הכרטיס - שם הקטגוריה */}
+                <div className={`${CATEGORIES[currentCard.category].bgColor} px-6 py-4 text-center border-b ${CATEGORIES[currentCard.category].borderColor}`}>
+                  <h3 className={`text-2xl font-bold ${CATEGORIES[currentCard.category].textColor}`}>
+                    {currentCard.category}
+                  </h3>
+                </div>
+                
+                {/* גוף הכרטיס - מזהה התוכן */}
+                <div className="flex-grow flex items-center justify-center p-8 relative">
+                  {/* עיטור רקע עדין */}
+                  <div className="absolute inset-0 opacity-[0.03] pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, black 1px, transparent 0)', backgroundSize: '24px 24px' }}></div>
+                  
+                  <div className="text-center relative z-10">
+                    <span className="inline-block px-4 py-2 bg-gray-100 text-gray-500 rounded-full text-sm font-mono mb-4">
+                      {currentCard.contentId}
+                    </span>
+                    <h4 className="text-3xl font-light text-gray-800 leading-relaxed">
+                      [כאן יופיע התוכן של הקלף בעתיד]
+                    </h4>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        )}
+      </main>
+
+      {/* אזור כפתורי פעולה */}
+      <footer className="w-full max-w-md flex flex-col sm:flex-row gap-4 items-center justify-center pb-8">
+        <button
+          onClick={drawCard}
+          disabled={!selectedCategory || totalCardsLeft === 0}
+          className={`flex-1 w-full py-4 px-8 rounded-full text-xl font-bold text-white shadow-lg transition-all transform hover:scale-105 active:scale-95
+            ${(!selectedCategory || totalCardsLeft === 0) 
+              ? 'bg-gray-400 cursor-not-allowed shadow-none hover:scale-100 active:scale-100' 
+              : 'bg-gradient-to-r from-purple-600 to-pink-500 hover:from-purple-700 hover:to-pink-600 hover:shadow-xl'
+            }
+          `}
+        >
+          {totalCardsLeft === 0 ? 'החפיסה נגמרה' : 
+            !selectedCategory ? 'בחרו קטגוריה תחילה' : 
+            'הגרל קלף'}
+        </button>
+        
+        <button
+          onClick={resetDeck}
+          className="flex-none w-full sm:w-auto py-4 px-8 rounded-full text-lg font-bold text-purple-700 bg-white border-2 border-purple-200 shadow-sm transition-all hover:bg-purple-50 hover:border-purple-300 active:scale-95"
+        >
+          איפוס משחק
+        </button>
+      </footer>
+
+    </div>
+  );
+}
